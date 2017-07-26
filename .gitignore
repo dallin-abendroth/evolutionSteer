@@ -5,3 +5,9 @@ data/autosave-*\.gz
 error\.log
 
 data/tempfile\.gz
+/Axon.class
+/Brain.class
+/Creature.class
+/Muscle.class
+/Node.class
+/Rectangle.class
