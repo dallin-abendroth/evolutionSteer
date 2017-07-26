@@ -11,3 +11,5 @@ data/tempfile\.gz
 /Muscle.class
 /Node.class
 /Rectangle.class
+/evolutionSteer.class
+/ComputingThread.class

@@ -1,10 +1,18 @@
-class Node {
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+
+import processing.core.PApplet;
+import processing.core.PGraphics;
+
+class Node extends PApplet{
   float x, y, z, vx, vy, vz, prevX, prevY, prevZ, pvx, pvy, pvz, m, f;
   boolean safeInput;
+  evolutionSteer parent;
   float pressure;
   Node(float tx, float ty, float tz,
   float tvx, float tvy, float tvz,
-  float tm, float tf) {
+  float tm, float tf, evolutionSteer pr) {
     this.prevX = x = tx;
     this.prevY = y = ty;
     this.prevZ = z = tz;
@@ -14,48 +22,49 @@ class Node {
     this.m = tm;
     this.f = tf;
     this.pressure = 0;
+    this.parent = pr;
   }
   void applyForces() {
-    this.vx *= airFriction;
-    this.vy *= airFriction;
-    this.vz *= airFriction;
+    this.vx *= evolutionSteer.airFriction;
+    this.vy *= evolutionSteer.airFriction;
+    this.vz *= evolutionSteer.airFriction;
     this.y += vy;
     this.x += vx;
     this.z += vz;
     float acc = dist(vx,vy,vz,pvx,pvy,pvz);
-    totalNodeNausea += acc*acc*nauseaUnit;
+    evolutionSteer.totalNodeNausea += acc*acc*evolutionSteer.nauseaUnit;
     this.pvx = vx;
     this.pvy = vy;
     this.pvz = vz;
   }
   void applyGravity() {
-    this.vy += gravity;
+    this.vy += evolutionSteer.gravity;
   }
   void pressAgainstGround(float groundY){
     float dif = y-(groundY-m/2);
-    this.pressure += dif*pressureUnit;
+    this.pressure += dif*evolutionSteer.pressureUnit;
     this.y = (groundY-m/2);
     this.vy = 0;
     this.x -= vx*f;
     this.z -= vz*f;
     if (this.vx > 0) {
-      this.vx -= this.f*dif*FRICTION;
+      this.vx -= this.f*dif*evolutionSteer.FRICTION;
       if (this.vx < 0) {
         this.vx = 0;
       }
     } else {
-      this.vx += this.f*dif*FRICTION;
+      this.vx += this.f*dif*evolutionSteer.FRICTION;
       if (this.vx > 0) {
         this.vx = 0;
       }
     }
     if (this.vz > 0) {
-      this.vz -= this.f*dif*FRICTION;
+      this.vz -= this.f*dif*evolutionSteer.FRICTION;
       if (this.vz < 0) {
         this.vz = 0;
       }
     } else {
-      this.vz += this.f*dif*FRICTION;
+      this.vz += this.f*dif*evolutionSteer.FRICTION;
       if (vz > 0) {
         vz = 0;
       }
@@ -64,16 +73,16 @@ class Node {
   void hitWalls(Boolean addToAngular) {
     this.pressure = 0;
     float dif = y+m/2;
-    if (dif >= 0 && haveGround) {
+    if (dif >= 0 && evolutionSteer.haveGround) {
       pressAgainstGround(0);
     }
-    if(this.y > this.prevY && hazelStairs >= 0){
+    if(this.y > this.prevY && evolutionSteer.hazelStairs >= 0){
       float bottomPointNow = y+m/2;
       float bottomPointPrev = prevY+m/2;
-      int levelNow = (int)(ceil(bottomPointNow/hazelStairs));
-      int levelPrev = (int)(ceil(bottomPointPrev/hazelStairs));
+      int levelNow = (int)(ceil(bottomPointNow/evolutionSteer.hazelStairs));
+      int levelPrev = (int)(ceil(bottomPointPrev/evolutionSteer.hazelStairs));
       if(levelNow > levelPrev){
-        float groundLevel = levelPrev*hazelStairs;
+        float groundLevel = levelPrev*evolutionSteer.hazelStairs;
         pressAgainstGround(groundLevel);
       }
     }
@@ -145,32 +154,35 @@ class Node {
     this.prevX = this.x;
   }
   Node copyNode() {
-    return (new Node(this.x, this.y, this.z, 0, 0, 0, this.m, this.f));
+    return (new Node(this.x, this.y, this.z, 0, 0, 0, this.m, this.f, this.parent));
+  }
+  float r() {
+	  return pow(random(-1, 1), 19);
   }
   Node modifyNode(float mutability, int nodeNum) {
-    float newX = this.x+r()*0.5*mutability;
-    float newY = this.y+r()*0.5*mutability;
-    float newZ = this.z+r()*0.5*mutability;
+    float newX = this.x+r()*(float)0.5*mutability;
+    float newY = this.y+r()*(float)0.5*mutability;
+    float newZ = this.z+r()*(float)0.5*mutability;
     //float newM = m+r()*0.1*mutability;
     //newM = min(max(newM, 0.3), 0.5);
-    float newM = 0.4;
-    float newF = min(max(this.f+r()*0.1*mutability, 0), 1);
-    Node newNode = new Node(newX, newY, newZ, 0, 0, 0, newM, newF);
+    float newM = (float)0.4;
+    float newF = min(max(this.f+r()*(float)0.1*mutability, (float)0), (float)1);
+    Node newNode = new Node(newX, newY, newZ, 0, 0, 0, newM, newF, parent);
     return newNode;//max(m+r()*0.1,0.2),min(max(f+r()*0.1,0),1)
   }
   void drawNode(PGraphics img) {
-    color c = color(0,0,0);
+    int c = color(0,0,0);
     if (this.f <= 0.5) {
-      c = colorLerp(color(255,255,255),color(180,0,255),this.f*2);
+      c = colorLerp(parent.color(255,255,255),parent.color(180,0,255),this.f*2);
     }else{
-      c = colorLerp(color(180,0,255),color(0,0,0),this.f*2-1);
+      c = colorLerp(parent.color(180,0,255),parent.color(0,0,0),this.f*2-1);
     }
     img.fill(c);
     img.noStroke();
     img.lights();
     img.pushMatrix();
-    img.translate(this.x*scaleToFixBug, this.y*scaleToFixBug,this.z*scaleToFixBug);
-    img.sphere(this.m*scaleToFixBug*0.5);
+    img.translate(this.x*evolutionSteer.scaleToFixBug, this.y*evolutionSteer.scaleToFixBug,this.z*evolutionSteer.scaleToFixBug);
+    img.sphere(this.m*evolutionSteer.scaleToFixBug*(float)0.5);
     img.popMatrix();
     //img.ellipse((ni.x+x)*scaleToFixBug, (ni.y+y)*scaleToFixBug, ni.m*scaleToFixBug, ni.m*scaleToFixBug);
     /*if(ni.f >= 0.5){
@@ -183,8 +195,10 @@ class Node {
     img.text(nf(ni.value,0,2),(ni.x+x)*scaleToFixBug,(ni.y+ni.m*lineY2+y)*scaleToFixBug);
     img.text(operationNames[ni.operation],(ni.x+x)*scaleToFixBug,(ni.y+ni.m*lineY1+y)*scaleToFixBug);*/
   }
-  color colorLerp(color a, color b, float x){
-    return color(red(a)+(red(b)-red(a))*x, green(a)+(green(b)-green(a))*x, blue(a)+(blue(b)-blue(a))*x);
+  int colorLerp(int a, int b, float x){
+    return parent.color(parent.red(a)+(parent.red(b)-parent.red(a))*x, 
+    		parent.green(a)+(parent.green(b)-parent.green(a))*x, 
+    		parent.blue(a)+(parent.blue(b)-parent.blue(a))*x);
   }
   
   public void saveToJson(JsonGenerator g){
@@ -206,7 +220,7 @@ class Node {
       g.writeBooleanField("safeInput", this.safeInput);
       g.writeNumberField("pressure", this.pressure);
     } catch(Exception e){
-        writeToErrorLog(e);
+      	evolutionSteer.writeToErrorLog(e);
     }
   }
   
@@ -233,7 +247,7 @@ class Node {
          else if(fieldName.equals("pressure")){ this.pressure = p.getFloatValue(); }
        }
     } catch(Exception e){
-      writeToErrorLog(e);
+    	evolutionSteer.writeToErrorLog(e);
     }
   }
 

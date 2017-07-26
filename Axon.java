@@ -1,3 +1,7 @@
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+
 class Axon {
   final double MUTABILITY_MUTABILITY = 0.7;
   final int mutatePower = 9;
@@ -10,7 +14,9 @@ class Axon {
     mutability = m;
     MUTATE_MULTI = Math.pow(0.5,mutatePower);
   }
-  
+  public Axon copyAxon(){ 
+	    return new Axon(this.weight,this.mutability); 
+  } 
   public Axon mutateAxon(){
     double mutabilityMutate = Math.pow(0.5,pmRan()*MUTABILITY_MUTABILITY);
     return new Axon(weight+r()*mutability/MUTATE_MULTI,mutability*mutabilityMutate);
@@ -27,7 +33,7 @@ class Axon {
       g.writeNumberField("weight", weight);
       g.writeNumberField("mutability", mutability);
     } catch(Exception e){
-        writeToErrorLog(e);
+    		evolutionSteer.writeToErrorLog(e);
     }
   }
   
@@ -40,7 +46,7 @@ class Axon {
          else if(fieldName.equals("mutability")){ this.mutability = p.getDoubleValue(); }
       }
     } catch(Exception e){
-      writeToErrorLog(e);
+    		evolutionSteer.writeToErrorLog(e);
     }
   }
 }

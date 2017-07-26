@@ -1,15 +1,24 @@
-class Creature {
+import java.util.ArrayList;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+
+import processing.core.*;
+
+class Creature extends PApplet{
   ArrayList<Node> n;
   ArrayList<Muscle> m;
   float d;
   int id;
+  evolutionSteer parent;
   boolean alive;
   float creatureTimer;
   float mutability;
   Brain brain;
   int[] name;
   float[][] foodPositions = new float[100][3];
-  float foodAngle = 0.0;
+  float foodAngle = (float)0.0;
   float foodX = 0;
   float foodY = 0;
   float foodZ = 0;
@@ -17,10 +26,11 @@ class Creature {
   float averageX = 0;
   float averageY = 0;
   float averageZ = 0;
-  float energy = baselineEnergy;
+  float energy = evolutionSteer.baselineEnergy;
   float startingFoodDistance = 9999;
   
-  Creature(int[] tname, int tid, ArrayList<Node> tn, ArrayList<Muscle> tm, float td, boolean talive, float tct, float tmut, Brain newBrain, float[][] tfoodpos) {
+  Creature(int[] tname, int tid, ArrayList<Node> tn, ArrayList<Muscle> tm, float td, boolean talive, float tct, float tmut, Brain newBrain, float[][] tfoodpos, evolutionSteer pr) {
+	this.parent = pr;
     this.id = tid;
     this.m = tm;
     this.n = tn;
@@ -31,7 +41,7 @@ class Creature {
     if(newBrain != null){
       this.brain = newBrain;
     }else{
-      this.brain = new Brain(BRAIN_WIDTH, this.getBrainHeight());
+      this.brain = new Brain(evolutionSteer.BRAIN_WIDTH, this.getBrainHeight());
     }
     if(tname == null){
       this.name = getNewCreatureName();
@@ -42,8 +52,8 @@ class Creature {
     }
     if(tfoodpos == null){
       for(int i = 0; i < 100; i++){
-        this.foodPositions[i][0] = random(-foodAngleChange,foodAngleChange);
-        this.foodPositions[i][1] = random(-1.2,-0.55);
+        this.foodPositions[i][0] = random(-evolutionSteer.foodAngleChange,evolutionSteer.foodAngleChange);
+        this.foodPositions[i][1] = random((float)-1.2,(float)-0.55);
         this.foodPositions[i][2] = random(0,1);
       }
     }else{
@@ -58,11 +68,12 @@ class Creature {
     return this.n.size()+m.size()+1;
   }
   void changeBrainStructure(int rowInsertionIndex, int rowRemovalIndex){
-    this.brain.changeBrainStructure(BRAIN_WIDTH, this.getBrainHeight(), rowInsertionIndex,rowRemovalIndex);
+    this.brain.changeBrainStructure(evolutionSteer.BRAIN_WIDTH, this.getBrainHeight(), rowInsertionIndex,rowRemovalIndex);
   }
   Creature modified(int id, float mutationFactor) {
-    float modMut = mutationFactor * mutability;
-    if(mutationFactor > 1.0 && modMut < 1.0){ modMut = 1.5; mutability = 1.0; }
+    float modMut; 
+    if(mutationFactor == 1.0){ mutationFactor = mutability; modMut = mutability; } 
+    else{ modMut = mutability; }     if(mutationFactor > 1.0 && modMut < 1.0){ modMut = (float)1.5; mutability = (float)1.0; }
     ArrayList<Node> newN = new ArrayList<Node>(0);
     ArrayList<Muscle> newM = new ArrayList<Muscle>(0);
     for (int i = 0; i < this.n.size(); i++) {
@@ -73,21 +84,29 @@ class Creature {
     }
     
     boolean bigMutAddNode = false, bigMutRemoveNode = false, bigMutAddMuscle = false, bigMutRemoveMuscle = false;
-    if (random(0, 1) < bigMutationChance*modMut || this.n.size() <= 2){ bigMutAddNode = true; }
-    if (random(0, 1) < bigMutationChance*modMut) { bigMutAddMuscle = true; }
-    if (random(0, 1) < bigMutationChance*modMut && this.n.size() >= 5) { bigMutRemoveNode = true; }
-    if (random(0, 1) < bigMutationChance*modMut && this.m.size() >= 2) { bigMutRemoveMuscle = true; }
+    boolean bigMutExpandBrain = false; 
+    if (random(0, 1) < evolutionSteer.bigMutationChance*mutationFactor || this.n.size() <= 2){ bigMutAddNode = true; } 
+    if (random(0, 1) < evolutionSteer.bigMutationChance*mutationFactor) { bigMutAddMuscle = true; } 
+    if (random(0, 1) < evolutionSteer.bigMutationChance*mutationFactor && this.n.size() >= 5) { bigMutRemoveNode = true; } 
+    if (random(0, 1) < evolutionSteer.bigMutationChance*mutationFactor && this.m.size() >= 2) { bigMutRemoveMuscle = true; } 
+    if (random(0, 1) < evolutionSteer.bigMutationChance*mutationFactor && this.brain.BRAIN_WIDTH < 5) { bigMutExpandBrain = true; } 
     
     int[] newName = new int[2];
-    if(bigMutAddNode || bigMutRemoveNode || bigMutAddMuscle || bigMutRemoveMuscle){
+    if(bigMutAddNode || bigMutRemoveNode || bigMutAddMuscle || bigMutRemoveMuscle || bigMutExpandBrain){
       newName = getNewCreatureName();
     } else {
       newName[0] = name[0];
-      newName[1] = CREATURES_PER_PATRON[name[0]];
-      CREATURES_PER_PATRON[name[0]]++;
+      newName[1] = evolutionSteer.CREATURES_PER_PATRON[name[0]];
+      evolutionSteer.CREATURES_PER_PATRON[name[0]]++;
     }
+    Brain tmpBrain; 
+    if(bigMutExpandBrain){ 
+      tmpBrain = this.brain.copyExpandedBrain(); 
+    } else { 
+      tmpBrain = this.brain.copyMutatedBrain(); 
+    } 
     Creature modifiedCreature = new Creature(newName, id, 
-    newN, newM, 0, true, creatureTimer+r()*16*modMut, min(mutability*random(0.8, 1.25), 2), this.brain.copyMutatedBrain(),null);
+    newN, newM, 0, true, creatureTimer+r()*16*modMut, min(mutability*random((float)0.8, (float)1.25), 2), tmpBrain,null,parent);
     if (bigMutAddNode) { //Add a node
       modifiedCreature.addRandomNode();
     }
@@ -105,6 +124,26 @@ class Creature {
     modifiedCreature.toStableConfiguration();
     modifiedCreature.moveToCenter();
     return modifiedCreature;
+  }
+
+	public int[] getNewCreatureName(){
+	  float indexOfChoice = random((float)0,evolutionSteer.TOTAL_PLEDGED); 
+	  float runningTotal = 0;
+	  for(int i = 0; i < evolutionSteer.patronData.length; i++){
+	    String[] parts = evolutionSteer.patronData[i].split(",");
+	    runningTotal += Float.parseFloat(parts[3]);
+	    if(runningTotal >= indexOfChoice){
+	      int[] result = new int[2];
+	      result[0] = i;
+	      result[1] = evolutionSteer.CREATURES_PER_PATRON[i];
+	      evolutionSteer.CREATURES_PER_PATRON[i]++;
+	      return result;
+	    }
+	  }
+	  return null;
+	}
+  float r() {
+	  return pow(random(-1, 1), 19);
   }
   void moveToCenter(){
     float avX = 0;
@@ -169,12 +208,12 @@ class Creature {
     float ang1 = random(0, 2*PI);
     float distance = sqrt(random(0, 1));
     float vertical = random(-1,1);
-    float x = this.n.get(parentNode).x+cos(ang1)*0.5*distance;
-    float y = this.n.get(parentNode).y+vertical*0.5*distance;
-    float z = this.n.get(parentNode).y+sin(ang1)*0.5*distance;
+    float x = this.n.get(parentNode).x+cos(ang1)*(float)0.5*distance;
+    float y = this.n.get(parentNode).y+vertical*(float)0.5*distance;
+    float z = this.n.get(parentNode).y+sin(ang1)*(float)0.5*distance;
     int newNodeCount = n.size()+1;
     
-    this.n.add(new Node(x, y, z, 0, 0, 0, 0.4, random(0, 1)));
+    this.n.add(new Node(x, y, z, 0, 0, 0, (float)0.4, random((float)0, (float)1), parent));
     changeBrainStructure(this.n.size()-1,-1);
     
     int nextClosestNode = 0;
@@ -194,17 +233,17 @@ class Creature {
   }
   void addRandomMuscle(int tc1, int tc2) {
     if (tc1 == -1) {
-      tc1 = int(random(0, this.n.size()));
+      tc1 = (int)(random((float)0, this.n.size()));
       tc2 = tc1;
       while (tc2 == tc1 && this.n.size () >= 2) {
-        tc2 = int(random(0, this.n.size()));
+        tc2 = (int)(random((float)0, this.n.size()));
       }
     }
-    float len = random(0.5, 1.5);
+    float len = random((float)0.5, (float)1.5);
     if (tc1 != -1) {
       len = dist(this.n.get(tc1).x, this.n.get(tc1).y, this.n.get(tc2).x, this.n.get(tc2).y);
     }
-    m.add(new Muscle(tc1, tc2, len, random(0.02, 0.08)));
+    m.add(new Muscle(tc1, tc2, len, random((float)0.02, (float)0.08), parent));
     changeBrainStructure(getBrainHeight()-2,-1);
   }
   void removeRandomNode() {
@@ -255,19 +294,19 @@ class Creature {
       newBrain = this.brain.getUsableCopyOfBrain();
     }
     return new Creature(this.name, newID, n2, m2, this.d, this.alive, this.creatureTimer,
-                        this.mutability,newBrain,newFoodPositions);
+                        this.mutability,newBrain,newFoodPositions, parent);
   }
   void drawCreature(PGraphics img, Boolean putInFrontOfBack) {
     if(putInFrontOfBack && false){
       float minZ = 9999;
       for (int i = 0; i < n.size(); i++) {
-        float value = n.get(i).z-n.get(i).m*0.5;
+        float value = n.get(i).z-n.get(i).m*(float)0.5;
         if(value < minZ){
           minZ = value;
         }
       }
       img.pushMatrix();
-      img.translate(0,0,-minZ*scaleToFixBug);
+      img.translate(0,0,-minZ*evolutionSteer.scaleToFixBug);
     }
     for (int i = 0; i < this.m.size(); i++) {
       this.m.get(i).drawMuscle(this.n, img);
@@ -306,7 +345,7 @@ class Creature {
         furthestNodeForward = newX;
       }
     }
-    this.d = MIN_FOOD_DISTANCE+(MAX_FOOD_DISTANCE-MIN_FOOD_DISTANCE)*this.foodPositions[chomps][2];
+    this.d = evolutionSteer.MIN_FOOD_DISTANCE+(evolutionSteer.MAX_FOOD_DISTANCE-evolutionSteer.MIN_FOOD_DISTANCE)*this.foodPositions[chomps][2];
     this.foodX = this.foodX+cos(foodAngle)*(furthestNodeForward+d);
     this.foodZ = this.foodZ+sin(foodAngle)*(furthestNodeForward+d);
     this.foodY = this.foodPositions[chomps][1];
@@ -316,7 +355,7 @@ class Creature {
     float closestDist = 9999;
     for(int i = 0; i < this.n.size(); i++){
       Node N = this.n.get(i);
-      float distFromFood = dist(N.x,N.y,N.z,this.foodX,this.foodY,this.foodZ)-0.4;
+      float distFromFood = dist(N.x,N.y,N.z,this.foodX,this.foodY,this.foodZ)-(float)0.4;
       if(distFromFood < closestDist){
         closestDist = distFromFood;
       }
@@ -331,7 +370,7 @@ class Creature {
       }
     }
     if(hasNodeOffGround){
-      float withinChomp = max(1.0-this.getCurrentFoodDistance()/this.startingFoodDistance,0);
+      float withinChomp = max((float)1.0-this.getCurrentFoodDistance()/this.startingFoodDistance,(float)0);
       return chomps+withinChomp;//cumulativeAngularVelocity/(n.size()-2)/pow(averageNodeNausea,0.3);//   /(2*PI)/(n.size()-2); //dist(0,0,averageX,averageZ)*0.2; // Multiply by 0.2 because a meter is 5 units for some weird reason.
     }else{
       return 0;
@@ -405,7 +444,7 @@ class Creature {
       g.writeEndArray();
       g.writeObjectFieldStart("brain"); this.brain.saveToJson(g); g.writeEndObject();
     } catch(Exception e){
-        writeToErrorLog(e);
+        evolutionSteer.writeToErrorLog(e);
     }
    
   }
@@ -420,7 +459,7 @@ class Creature {
          else if(fieldName.equals("creatureTimer")){ creatureTimer = p.getFloatValue(); }
          else if(fieldName.equals("mutability")){ mutability = p.getFloatValue(); }
          else if(fieldName.equals("name")){ 
-           if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
+           if (token != JsonToken.START_ARRAY) { throw new Exception("Expected Array"); }
            int i = 0;
            while(p.nextToken() != JsonToken.END_ARRAY){
               name[i] = p.getIntValue();
@@ -429,10 +468,10 @@ class Creature {
          }
          else if(fieldName.equals("nodes")){
            this.n = new ArrayList<Node>();
-           if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
+           if (token != JsonToken.START_ARRAY) { throw new Exception("Expected Array"); }
            while((token = p.nextToken()) != JsonToken.END_ARRAY){
              if (token == JsonToken.START_OBJECT){
-               Node node = new Node(0, 0, 0, 0, 0, 0, 0, 0);
+               Node node = new Node(0, 0, 0, 0, 0, 0, 0, 0, parent);
                node.loadFromJson(p);
                this.n.add(node);
              }
@@ -440,22 +479,22 @@ class Creature {
          }
          else if(fieldName.equals("muscles")){
            this.m = new ArrayList<Muscle>();
-           if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
+           if (token != JsonToken.START_ARRAY) { throw new Exception("Expected Array"); }
            while((token = p.nextToken()) != JsonToken.END_ARRAY){
              if (token == JsonToken.START_OBJECT){
-               Muscle muscle = new Muscle(0, 0, 0, 0);
+               Muscle muscle = new Muscle(0, 0, 0, 0, parent);
                muscle.loadFromJson(p);
                this.m.add(muscle);
              }
            }
          }
          else if(fieldName.equals("brain")){
-           if (token != JsonToken.START_OBJECT) { throw new IOException("Expected Object"); }
+           if (token != JsonToken.START_OBJECT) { throw new Exception("Expected Object"); }
            brain = new Brain(1, 1);
            brain.loadFromJson(p);
          }
          else if(fieldName.equals("foodPositions")){
-           if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
+           if (token != JsonToken.START_ARRAY) { throw new Exception("Expected Array"); }
            int i = 0;
            foodPositions = new float[100][3];
            while((token = p.nextToken()) != JsonToken.END_ARRAY){
@@ -470,6 +509,6 @@ class Creature {
            }
          }
        }
-    } catch(Exception e) {  writeToErrorLog(e); }
+    } catch(Exception e) {  evolutionSteer.writeToErrorLog(e); }
   }
 }

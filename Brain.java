@@ -1,4 +1,15 @@
-class Brain {
+import java.util.ArrayList;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+
+import processing.core.*;
+import processing.opengl.*;
+import processing.javafx.*;
+import processing.data.*;
+
+class Brain extends PApplet {
   float[][] neurons;
   Axon[][][] axons;
   int BRAIN_WIDTH = 0;
@@ -18,7 +29,7 @@ class Brain {
       for(int x = 0; x < BRAIN_WIDTH-1; x++){
         for(int y = 0; y < BRAIN_HEIGHT; y++){
           for(int z = 0; z < BRAIN_HEIGHT-1; z++){
-            axons[x][y][z] = new Axon(templateAxons[x][y][z].weight,templateAxons[x][y][z].mutability);
+        	    axons[x][y][z] = templateAxons[x][y][z].copyAxon(); 
           }
         }
       }
@@ -32,9 +43,9 @@ class Brain {
         for(int z = 0; z < BRAIN_HEIGHT-1; z++){
           double startingWeight = 0;
           if(y == BRAIN_HEIGHT-1){
-            startingWeight = (Math.random()*2-1)*STARTING_AXON_VARIABILITY;
+            startingWeight = (Math.random()*2-1)*evolutionSteer.STARTING_AXON_VARIABILITY;
           }
-          axons[x][y][z] = new Axon(startingWeight,AXON_START_MUTABILITY);
+          axons[x][y][z] = new Axon(startingWeight,evolutionSteer.AXON_START_MUTABILITY);
         }
       }
     }
@@ -49,9 +60,9 @@ class Brain {
           if(y == rowInsertionIndex || z == rowInsertionIndex){
             double startingWeight = 0;
             if(y == BRAIN_HEIGHT-1 || true){
-              startingWeight = (Math.random()*2-1)*STARTING_AXON_VARIABILITY;
+              startingWeight = (Math.random()*2-1)*evolutionSteer.STARTING_AXON_VARIABILITY;
             }
-            axons[x][y][z] = new Axon(startingWeight,AXON_START_MUTABILITY);
+            axons[x][y][z] = new Axon(startingWeight,evolutionSteer.AXON_START_MUTABILITY);
           }else{
             int oldY = y;
             int oldZ = z;
@@ -114,22 +125,22 @@ class Brain {
     }
   }
   public float sigmoid(float input){
-    //return 1.0/(1.0+pow(2.71828182846,-input));
-    if(input >= -1 && input <= 1){
-       return 0.25*input+0.5;
-    } else if(input >= -3 && input < -1){
-       return 0.105*input+0.1192;
-    } else if(input > 1 && input <= 3){
-       return 0.105*input+0.8808;
-    } else if(input >= -5 && input < -3){
-       return 0.0177*input+0.018;
-    } else if(input > 3 && input <= 5){
-       return 0.0177*input+0.982;
-    } else if(input < -5){
-       return 0;
-    } else {
-       return 1;
-    }
+    //return 1.0/(1.0+pow((float)2.71828182846,-input)); 
+    if(input >= -1 && input <= 1){ 
+       return (float)0.25*input+(float)0.5; 
+    } else if(input >= -3 && input < -1){ 
+       return (float)0.105*input+(float)0.1192; 
+    } else if(input > 1 && input <= 3){ 
+       return (float)0.105*input+(float)0.8808; 
+    } else if(input >= -5 && input < -3){ 
+       return (float)0.0177*input+(float)0.018; 
+    } else if(input > 3 && input <= 5){ 
+       return (float)0.0177*input+(float)0.982; 
+    } else if(input < -5){ 
+       return 0; 
+    } else { 
+       return 1; 
+    }  
   }
   Brain getUsableCopyOfBrain(){
     return new Brain(BRAIN_WIDTH,BRAIN_HEIGHT,axons.clone(),true,false);
@@ -140,52 +151,70 @@ class Brain {
   Brain copyMutatedBrain(){
     return new Brain(BRAIN_WIDTH,BRAIN_HEIGHT,axons.clone(),false,true);
   }
-  public void drawBrain(float scaleUp, Creature owner){
+  Brain copyExpandedBrain(){ 
+    Axon[][][] extaxons = new Axon[BRAIN_WIDTH][BRAIN_HEIGHT][BRAIN_HEIGHT-1]; 
+    for(int x = 0; x < BRAIN_WIDTH; x++){ 
+        for(int y = 0; y < BRAIN_HEIGHT; y++){ 
+          for(int z = 0; z < BRAIN_HEIGHT-1; z++){ 
+            if(x < BRAIN_WIDTH - 1){ extaxons[x][y][z] = axons[x][y][z].copyAxon(); } 
+            if(x == BRAIN_WIDTH - 1){  
+              if(y == z){ 
+                extaxons[x][y][z] = new Axon(1.0,evolutionSteer.AXON_START_MUTABILITY); 
+              } else { 
+                extaxons[x][y][z] = new Axon(0.0,evolutionSteer.AXON_START_MUTABILITY); 
+              } 
+            } 
+          } 
+        } 
+      } 
+    return new Brain(BRAIN_WIDTH+1,BRAIN_HEIGHT,extaxons.clone(),false,false); 
+  } 
+  public void drawBrain(float scaleUp, Creature owner, evolutionSteer parent){
     ArrayList<Node> n = owner.n;
     ArrayList<Muscle> m = owner.m;
-    final float neuronSize = 0.4;
+    final float neuronSize = (float)0.4;
     int abw = BRAIN_WIDTH*2-1;
-    noStroke();
-    fill(100);
-    rect(-neuronSize*2*scaleUp,-neuronSize*2*scaleUp,(abw+neuronSize*2)*scaleUp,(BRAIN_HEIGHT+neuronSize*2)*scaleUp);
-    fill(255);
-    rect(-neuronSize*3*scaleUp,-neuronSize*scaleUp,neuronSize*scaleUp,n.size()*scaleUp);
-    fill(0);
-    rect(-neuronSize*3*scaleUp,(n.size()-neuronSize)*scaleUp,neuronSize*scaleUp,m.size()*scaleUp);
-    ellipseMode(RADIUS);
-    strokeWeight(0.5);
-    textAlign(CENTER);
-    textFont(font,0.58*scaleUp);
+    parent.noStroke();
+    parent.fill(100);
+    parent.rect(-neuronSize*2*scaleUp,-neuronSize*2*scaleUp,(abw+neuronSize*2)*scaleUp,(BRAIN_HEIGHT+neuronSize*2)*scaleUp);
+    parent.fill(255);
+    parent.rect(-neuronSize*3*scaleUp,-neuronSize*scaleUp,neuronSize*scaleUp,n.size()*scaleUp);
+    parent.fill(0);
+    parent.rect(-neuronSize*3*scaleUp,(n.size()-neuronSize)*scaleUp,neuronSize*scaleUp,m.size()*scaleUp);
+    parent.ellipseMode(RADIUS);
+    parent.strokeWeight((float) 0.5);
+    parent.textAlign(CENTER);
+    parent.textFont(evolutionSteer.font,(float)0.58*scaleUp);
     for(int x = 0; x < BRAIN_WIDTH; x++){
       for(int y = 0; y < BRAIN_HEIGHT; y++){
-        noStroke();
+    	  	parent.noStroke();
         double val = neurons[x][y];
-        fill(neuronFillColor(val));
-        ellipse(x*2*scaleUp,y*scaleUp,neuronSize*scaleUp,neuronSize*scaleUp);
-        fill(neuronTextColor(val));
-        text(nf((float)val,0,1),x*2*scaleUp,(y+(neuronSize*0.6))*scaleUp);
+        parent.fill(neuronFillColor(val));
+        parent.ellipse(x*2*scaleUp,y*scaleUp,neuronSize*scaleUp,neuronSize*scaleUp);
+        parent.fill(neuronTextColor(val));
+        parent.text(nf((float)val,0,1),x*2*scaleUp,(y+(neuronSize*(float)0.6))*scaleUp);
       }
     }
     for(int x = 0; x < BRAIN_WIDTH-1; x++){
       for(int y = 0; y < BRAIN_HEIGHT; y++){
         for(int z = 0; z < BRAIN_HEIGHT-1; z++){
-          drawAxon(x,y,x+1,z,scaleUp);
+          drawAxon(x,y,x+1,z,scaleUp,parent);
         }
       }
     }
   }
-  public void drawAxon(int x1, int y1, int x2, int y2, float scaleUp){
-    stroke(neuronFillColor(axons[x1][y1][y2].weight*neurons[x1][y1]));
-    line(x1*2*scaleUp,y1*scaleUp,x2*2*scaleUp,y2*scaleUp);
+  public void drawAxon(int x1, int y1, int x2, int y2, float scaleUp,evolutionSteer parent){
+    parent.stroke(neuronFillColor(axons[x1][y1][y2].weight*neurons[x1][y1]));
+    parent.line(x1*2*scaleUp,y1*scaleUp,x2*2*scaleUp,y2*scaleUp);
   }
-  public color neuronFillColor(double d){
+  public int neuronFillColor(double d){
     if(d >= 0){
       return color(255,255,255,(float)(d*255));
     }else{
       return color(1,1,1,abs((float)(d*255)));
     }
   }
-  public color neuronTextColor(double d){
+  public int neuronTextColor(double d){
     if(d >= 0){
       return color(0,0,0);
     }else{
@@ -224,7 +253,7 @@ class Brain {
          g.writeEndArray();
       }
     } catch(Exception e){
-        writeToErrorLog(e);
+    		evolutionSteer.writeToErrorLog(e);
     }
   }
   
@@ -236,7 +265,7 @@ class Brain {
          if(fieldName.equals("width")){ this.BRAIN_WIDTH = p.getIntValue(); }
          else if(fieldName.equals("height")){ this.BRAIN_HEIGHT = p.getIntValue(); }
          else if(fieldName.equals("axons")){
-           if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
+           if (token != JsonToken.START_ARRAY) { throw new Exception("Expected Array"); }
            int i = 0;
            axons = new Axon[BRAIN_WIDTH-1][BRAIN_HEIGHT][BRAIN_HEIGHT-1];
            while((token = p.nextToken()) != JsonToken.END_ARRAY){
@@ -259,7 +288,7 @@ class Brain {
            }
          }
          else if(fieldName.equals("neurons")){
-           if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
+           if (token != JsonToken.START_ARRAY) { throw new Exception("Expected Array"); }
            int i = 0;
            neurons = new float[BRAIN_WIDTH][BRAIN_HEIGHT];
            while((token = p.nextToken()) != JsonToken.END_ARRAY){
@@ -275,7 +304,7 @@ class Brain {
          }
       }
     } catch(Exception e){
-      writeToErrorLog(e);
+      evolutionSteer.writeToErrorLog(e);
     }
   }
   
