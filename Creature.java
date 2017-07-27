@@ -68,7 +68,7 @@ class Creature extends PApplet{
     return this.n.size()+m.size()+1;
   }
   void changeBrainStructure(int rowInsertionIndex, int rowRemovalIndex){
-    this.brain.changeBrainStructure(evolutionSteer.BRAIN_WIDTH, this.getBrainHeight(), rowInsertionIndex,rowRemovalIndex);
+    this.brain.changeBrainStructure(this.brain.BRAIN_WIDTH, this.getBrainHeight(), rowInsertionIndex,rowRemovalIndex);
   }
   Creature modified(int id, float mutationFactor) {
     float modMut; 
@@ -411,10 +411,11 @@ class Creature extends PApplet{
     return hasEaten;
   }
   
-  public void saveToJson(JsonGenerator g){
+  public void saveToJson(JsonGenerator g, int overwriteId){
     try{
       g.writeNumberField("d", d);
-      g.writeNumberField("id", id);
+      if(overwriteId == -1) { g.writeNumberField("id", id); }
+      else { g.writeNumberField("id", overwriteId); }
       g.writeBooleanField("alive", alive);
       g.writeNumberField("creatureTimer", creatureTimer);
       g.writeNumberField("mutability", mutability);
