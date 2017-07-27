@@ -86,11 +86,13 @@ public class evolutionSteer extends PApplet{
 	float camHA = 0;
 	float camVA = (float) -0.5;
 	static int frames = 60;
-	int simDuration = 15; // in seconds
+	static int simDuration = 15; // in seconds
 	static int jumperDuration = 1; // definition of jumper : chomp < this value (in seconds)
-	int maxFrames = simDuration*frames;
-	int maxSimulationFrames = simDuration*frames;
+	static int maxFrames = simDuration*frames;
+	int maxSimulationFrames = maxFrames;
 	static int jumperFrames = jumperDuration*frames;
+	static float giftForChompSec = 15;
+	static int giftForChompFrames = ceil(giftForChompSec*frames);
 	int menu = 0;
 	int gen = -1;
 	float sliderX = 1170;
@@ -523,7 +525,7 @@ public class evolutionSteer extends PApplet{
 
 			void openMiniSimulation() {
 			  simulationTimer = 0;
-			  maxSimulationFrames = simDuration*frames;
+			  maxSimulationFrames = maxFrames;
 			  if (gensToDo == 0) {
 			    miniSimulation = true;
 			    int id;
@@ -593,10 +595,10 @@ public class evolutionSteer extends PApplet{
 			      }
 			      startASAP();
 			    }
-			  }else if(menu == 1 && gen !=  -1 && abs(mX - 650) <= 50 && abs(mY - 90) <= 20){
+			  }else if(menu == 1 && gen !=  -1 && abs(mX - 650) <= 50 && abs(mY - 48) <= 20){
 			    setMenu(15);
 			    selectOutput("Select file to save simulation to",  "saveSelected");
-			  }else if(menu == 1 && gen !=  -1 && abs(mX - 505) <= 85 && abs(mY - 90) <= 20){
+			  }else if(menu == 1 && gen !=  -1 && abs(mX - 505) <= 85 && abs(mY - 48) <= 20){
 			    setMenu(15);
 			    selectOutput("Select file to save simulation to",  "saveSelectedLight");
 			  }else if (menu == 3 && abs(mX-1030) <= 130 && abs(mY-684) <= 20) {
@@ -897,7 +899,7 @@ public class evolutionSteer extends PApplet{
 			    drawBrain(px2-130, py2, 1,5, cj);
 			    drawStats(px2+(float)355, py2+(float)239, (float)1, (float)0.45);
 			    
-			    if(simulateCurrentCreature()){ maxSimulationFrames += simDuration*frames; }
+			    if(simulateCurrentCreature()){ maxSimulationFrames += giftForChompFrames; }
 			    int shouldBeWatching = statusWindow;
 			    if (statusWindow <= -1) {
 			      cj = creatureDatabase.get((genSelected-1)*3+statusWindow+3);
@@ -989,7 +991,7 @@ void initPercentiles(){
     	    text("EVOLUTION!", windowWidth/2, 200);
     	    text("START", windowWidth/2, 430);
     	    textSize(26);
-    	    text("Load simulation", windowWidth/2, 600);
+    	    text("Load simulation", windowWidth/2, 610);
     	  }else if (menu == 1) {
     	    noStroke();
     	    fill(0);
@@ -1011,8 +1013,8 @@ void initPercentiles(){
     	      rect(760, 20, 460, 40);
     	      rect(760, 70, 460, 40);
     	      rect(760, 120, 230, 40);
-    	      rect(600, 70, 100, 40);
-    	      rect(420, 70, 170, 40);
+    	      rect(600, 20, 100, 40);
+    	      rect(420, 20, 170, 40);
     	      if (gensToDo >= 2) {
     	        fill(128, 255, 128);
     	      } else {
@@ -1021,17 +1023,18 @@ void initPercentiles(){
     	      rect(990, 120, 230, 40);
     	      fill(0);
     	      //text("Survivor Bias: "+percentify(getSB(genSelected)), 437, 50);
-    	      text("Curve: ±"+nf(foodAngleChange/(2*PI)*360,0,2)+" degrees", 420, 50);
+    	      text("Curve: ±"+nf(foodAngleChange/(2*PI)*360,0,2)+" degrees", 420, 110);
+    	      text("Gift: +"+nf(giftForChompSec)+" seconds", 470, 135);
     	      if(enableRadioactivity){
-    	         text("Radioactive mode", 460, 130);
+    	         text("Radioactive mode", 460, 85);
     	      }
     	      text("Do 1 step-by-step generation.", 770, 50);
     	      text("Do 1 quick generation.", 770, 100);
     	      text("Do 1 gen ASAP.", 770, 150);
     	      text("Do gens ALAP.", 1000, 150);
     	      text("Median "+fitnessName, 50, 160);
-    	      text("Save", 610, 100);
-    	      text("Light save", 430, 100);
+    	      text("Save", 620, 48);
+    	      text("Light save", 435, 48);
     	      textAlign(CENTER);
     	      textAlign(RIGHT);
     	      text((float)(round(percentile.get(min(genSelected, percentile.size()-1))[14]*nbCreatures))/nbCreatures+" "+fitnessUnit, (float)700, (float)160);
@@ -1108,7 +1111,7 @@ void initPercentiles(){
     	        } else {
     	          lastIndex = (int)((i+1) * (float)(nbCreatures) / threads.length);
     	        }
-    	        threads[i] = new Thread(new ComputingThread(firstIndex, lastIndex, simDuration*frames));
+    	        threads[i] = new Thread(new ComputingThread(firstIndex, lastIndex));
     	        if(activateMultiThreading){
     	          threads[i].start();
     	        }
@@ -1384,10 +1387,11 @@ void initPercentiles(){
     	    }
     	    for (int j = 0; j < nbCreatures; j++) {
     	      Creature cj = c2.get(j);
-    	      c[cj.id-(gen*nbCreatures)-nbCreatures-1] = cj.copyCreature(-1,false,false);
+    	      c[(cj.id%nbCreatures)] = cj.copyCreature(-1,false,false);
     	    }
     	    drawScreenImage(3);
     	    gen++;
+    	    genSelected = gen; recalcSlider();
     	    massExtinction = false;
     	    if (stepbystep) {
     	      setMenu(13);
@@ -1435,12 +1439,14 @@ void initPercentiles(){
     	    noStroke();
     	    if (gen >= 1) {
     	      textAlign(CENTER);
-    	      if (gen >= 5) {
-    	        genSelected = round((sliderX-760)*(gen-1)/410)+1;
-    	      } else {
-    	        genSelected = round((sliderX-760)*gen/410);
+    	      if (drag) {
+    	    	  	if (gen >= 5) {
+    	    	  		genSelected = round((sliderX-760)*(gen-1)/410)+1;
+    	    	  	} else {
+    	    	  		genSelected = round((sliderX-760)*gen/410);
+    	    	  	}
+    	    	  	sliderX = min(max(sliderX+(mX-25-sliderX)*(float)0.2, (float)760), (float)1170);
     	      }
-    	      if (drag) sliderX = min(max(sliderX+(mX-25-sliderX)*(float)0.2, (float)760), (float)1170);
     	      fill(100);
     	      rect(760, 340, 460, 50);
     	      fill(220);
@@ -1507,6 +1513,9 @@ void initPercentiles(){
     	  return (float)1.0;
     	  //return 0.7+0.3*cos(g*(2*PI)/50.0);
     	}
+    	void recalcSlider() {
+    		sliderX = 760+(genSelected*410/gen);
+    	}
     	void keysToMoveCamera(){
     	  if(keyPressed){
     	    if(key == 'w'){
@@ -1545,22 +1554,43 @@ void initPercentiles(){
     	  camVA = min(max(camVA,-PI*(float)0.499),-PI*(float)0.001);
     	}
     	public void keyPressed(){
-    	  if(key == 't'){
-    	    foodAngleChange += 5.0/360.0*(2*PI);
-    	    setMenu(1);
-    	  }
-    	  if(key == 'g'){
-    	    foodAngleChange -= 5.0/360.0*(2*PI);
-    	    setMenu(1);
-    	  }
-    	  if(key == 'r'){
-    	    enableRadioactivity = !enableRadioactivity;
-    	    setMenu(1);
-    	  }
-    	  if(key == 'k'){
-    	    massExtinction = true;
-    	    setMenu(1);
-    	  }
+	  if (key == CODED) {
+    	    if (keyCode == LEFT) {
+    	    		genSelected -= 1;
+    	    		if(genSelected < 0) { genSelected = 0; }
+    	    } else if (keyCode == RIGHT) {
+	    		genSelected += 1;
+	    		if(genSelected > gen) { genSelected = gen; }
+    	    } 
+    	  } else {
+	    	  if(key == 't'){
+	    	    foodAngleChange += 5.0/360.0*(2*PI);
+	    	    setMenu(1);
+	    	  }
+	    	  if(key == 'g'){
+	    	    foodAngleChange -= 5.0/360.0*(2*PI);
+	    	    setMenu(1);
+	    	  }
+	    	  if(key == 'y'){
+	    		giftForChompSec -= 0.5;
+	    		if(giftForChompSec < 0.5) { giftForChompSec = (float)0.5; }
+			giftForChompFrames = ceil(giftForChompSec*frames);
+	  	    setMenu(1);
+	  	  }
+	  	  if(key == 'h'){
+	  		giftForChompSec += 0.5;
+			giftForChompFrames = ceil(giftForChompSec*frames);
+	  	    setMenu(1);
+	  	  }
+	    	  if(key == 'r'){
+	    	    enableRadioactivity = !enableRadioactivity;
+	    	    setMenu(1);
+	    	  }
+	    	  if(key == 'k'){
+	    	    massExtinction = true;
+	    	    setMenu(1);
+	    	  }
+    	   }
     	}
     	void drawStats(float x, float y, float z, float size){
     	  textAlign(RIGHT);
@@ -1764,9 +1794,10 @@ void initPercentiles(){
 
     	public void saveToJson(JsonGenerator g, boolean light){
     	  try{
-    	    g.writeNumberField("version", 1);
+    	    g.writeNumberField("version", 2);
     	    g.writeNumberField("seed", SEED);
     	    g.writeNumberField("foodChange", foodAngleChange);
+    	    g.writeNumberField("giftForChompSec", giftForChompSec);
     	    if(light) { g.writeNumberField("gen", 1); }
     	    else { g.writeNumberField("gen", gen); }
     	    g.writeNumberField("nbcreatures", nbCreatures);
@@ -1854,6 +1885,9 @@ void initPercentiles(){
     	      else if(fieldName.equals("nbcreatures")){ nbCreatures = p.getIntValue(); initPercentiles(); }
     	      else if(fieldName.equals("gridX")){ gridX = p.getIntValue(); }
     	      else if(fieldName.equals("gridY")){ gridX = p.getIntValue(); }
+    	      else if(fieldName.equals("giftForChompSec")){ 
+    	    	  	giftForChompSec = p.getFloatValue(); giftForChompFrames = ceil(giftForChompSec*frames);
+    	    	  }
     	      else if(fieldName.equals("creatureDatabase")){
     	        creatureDatabase.clear();
     	        if (token != JsonToken.START_ARRAY) { throw new IOException("Expected Array"); }
