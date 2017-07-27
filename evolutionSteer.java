@@ -48,13 +48,13 @@ public class evolutionSteer extends PApplet{
 	static float foodAngleChange = (float) 0.0;
 		
 	
-	static int nbCreatures = 100; // please set even number
-	int gridX = 10; // X * Y must be equal to nbCreatures !
+	static int nbCreatures = 250; // please set even number
+	int gridX = 25; // X * Y must be equal to nbCreatures !
 	int gridY = 10;
-	int thresholdName = 25; // name of species is showed over this threshold
+	int thresholdName = 20; // name of species is showed over this threshold
 	
 	int autoSave = 200; // autosave every x generation in ALAP mode
-	boolean autoSaveTimecode = true; // set to false is disk space limited
+	boolean autoSaveTimecode = false; // set to false is disk space limited
 	boolean hasAutosaveWorked = false;
 	int autoPause = 10000; // pauses ALAP each x generation
 	
@@ -129,13 +129,13 @@ public class evolutionSteer extends PApplet{
 	  100, 200, 300, 400, 500, 600, 700, 800, 900, 910, 920, 930, 940, 950, 960, 970, 980, 990, 999
 	};
 	int[] p = new int[29];
-	final static int BRAIN_WIDTH = 3;
+	final static int BRAIN_WIDTH = 2;
 	static float STARTING_AXON_VARIABILITY = (float) 1.0;
 	static float AXON_START_MUTABILITY = (float) 0.0005;
 	
 	boolean enableRadioactivity = false;
-	int radioactiveNumber = 400; // number of highly mutated creatures
-	int freshBloodNumber = 0; // number of brand new creatures
+	int radioactiveNumber = 20; // number of highly mutated creatures
+	int freshBloodNumber = 10; // number of brand new creatures
 	float radioactiveMutator = (float) 1.5;
 	
 	boolean massExtinction = false;
