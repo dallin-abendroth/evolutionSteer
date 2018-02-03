@@ -43,8 +43,8 @@ boolean saveFramesPerGeneration = true;
 color gridBGColor = color(220, 253, 102, 255);
 float foodAngleChange = 0.0;
 
-static int nbCreatures = 250; // please set even number
-int gridX = 25; // X * Y must be equal to nbCreatures !
+static int nbCreatures = 1000; // please set even number
+int gridX = 100; // X * Y must be equal to nbCreatures !
 int gridY = 10;
 int thresholdName = 25; // name of species is showed over this threshold
 
@@ -131,7 +131,7 @@ float STARTING_AXON_VARIABILITY = 1.0;
 float AXON_START_MUTABILITY = 0.0005;
 float lossPerLayer = 1; //chomp lost by layer of neurons added
 
-boolean enableRadioactivity = true;
+boolean enableRadioactivity = false;
 int radioactiveNumber = 20; // number of highly mutated creatures
 int freshBloodNumber = 10; // number of brand new creatures
 float radioactiveMutator = 1.5;
